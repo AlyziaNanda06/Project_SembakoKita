@@ -1,9 +1,7 @@
-
 <?php
 session_start();
-require_once "../koneksi.php";
 
-if (isset($_SESSION["admin_id"])) {
+if (isset($_SESSION['admin_id'])) {
     header("Location: dashboard.php");
     exit;
 }
