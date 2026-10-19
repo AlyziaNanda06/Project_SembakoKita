@@ -1,4 +1,8 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once "koneksi.php";
 
 // Mengambil kategori yang aktif
@@ -55,6 +59,7 @@ function e($teks) {
 </head>
 <body>
 
+
 <!-- NAVBAR -->
 <header class="navbar">
     <a href="index.php" class="logo">
@@ -76,9 +81,34 @@ function e($teks) {
         <a href="index.php">Beranda</a>
         <a href="produk.php">Produk</a>
         <a href="keranjang.php">Keranjang</a>
-        <a href="login.php" class="login-link">Masuk</a>
+
+        <?php if (isset($_SESSION['user_id'])): ?>
+
+            <span class="user-greeting">
+                Halo, <?= e($_SESSION['user_name'] ?? 'Pengguna') ?>
+            </span>
+
+            <form action="logout.php" method="POST" class="logout-form">
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="<?= e($_SESSION['csrf_token'] ?? '') ?>"
+                >
+
+                <button type="submit" class="logout-link">
+                    Logout
+                </button>
+            </form>
+
+        <?php else: ?>
+
+            <a href="login.php" class="login-link">Masuk</a>
+            <a href="register.php" class="register-link">Daftar</a>
+
+        <?php endif; ?>
     </nav>
 </header>
+
 
 <main>
 
