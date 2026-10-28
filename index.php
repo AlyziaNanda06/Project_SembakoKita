@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once "koneksi.php";
 
 // Mengambil kategori yang aktif
@@ -72,12 +73,22 @@ function e($teks) {
         <button type="submit">Cari</button>
     </form>
 
-    <nav class="nav-menu">
-        <a href="index.php">Beranda</a>
-        <a href="produk.php">Produk</a>
-        <a href="keranjang.php">Keranjang</a>
+   
+<nav class="nav-menu">
+    <a href="index.php">Beranda</a>
+    <a href="produk.php">Produk</a>
+    <a href="keranjang.php">Keranjang</a>
+
+    <?php if (isset($_SESSION['user_id'])): ?>
+        <span class="login-link">
+            Halo, <?= e($_SESSION['user_name'] ?? 'Pelanggan') ?>
+        </span>
+        <a href="logout.php" class="login-link">Keluar</a>
+    <?php else: ?>
         <a href="login.php" class="login-link">Masuk</a>
-    </nav>
+    <?php endif; ?>
+</nav>
+
 </header>
 
 <main>

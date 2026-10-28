@@ -1,8 +1,9 @@
+
 <?php
 $host = "localhost";
 $username = "root";
 $password = "";
-$database = "db_sembako_store";
+$database = "db_sembako_kita";
 
 // Menghubungkan PHP dengan MySQL
 $conn = mysqli_connect(
