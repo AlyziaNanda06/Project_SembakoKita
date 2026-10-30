@@ -1,89 +1,100 @@
-
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
-
 session_start();
-require_once __DIR__ . '/koneksi.php';
+require_once "koneksi.php";
 
-$error = '';
-$email = '';
-
-if (isset($_GET['daftar']) && $_GET['daftar'] === 'berhasil') {
-    $pesan = 'Pendaftaran berhasil! Silakan login dengan akun kamu.';
-} else {
-    $pesan = '';
+// Jika pengguna sudah login, arahkan ke halaman utama
+if (isset($_SESSION['user_id'])) {
+    header("Location: index.php");
+    exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+// Membuat token keamanan form
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
-    if ($email === '' || $password === '') {
-        $error = 'Email dan password wajib diisi.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Format email tidak valid.';
+$error = "";
+$email = "";
+
+// Memproses form login
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
+    // Validasi token keamanan
+    $token = $_POST['csrf_token'] ?? '';
+
+    if (
+        !is_string($token) ||
+        !hash_equals($_SESSION['csrf_token'], $token)
+    ) {
+        $error = "Permintaan tidak valid. Silakan muat ulang halaman.";
     } else {
-        $stmt = mysqli_prepare(
-            $conn,
-            "SELECT id, name, email, password, role
-             FROM users
-             WHERE email = ?
-             LIMIT 1"
-        );
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
 
-        if (!$stmt) {
-            $error = 'Terjadi kesalahan saat menyiapkan login.';
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = "Format email tidak valid.";
+        } elseif (!is_string($password) || $password === '') {
+            $error = "Password wajib diisi.";
         } else {
-            mysqli_stmt_bind_param($stmt, 's', $email);
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_store_result($stmt);
+            // Cari akun berdasarkan email
+            $stmt = mysqli_prepare(
+                $conn,
+                "SELECT id, name, email, password
+                 FROM users
+                 WHERE email = ?
+                 LIMIT 1"
+            );
 
-            if (mysqli_stmt_num_rows($stmt) === 1) {
+            if (!$stmt) {
+                $error = "Terjadi kesalahan sistem. Coba lagi nanti.";
+            } else {
+                mysqli_stmt_bind_param($stmt, "s", $email);
+                mysqli_stmt_execute($stmt);
                 mysqli_stmt_bind_result(
                     $stmt,
-                    $user_id,
-                    $user_name,
-                    $user_email,
-                    $password_hash,
-                    $role
+                    $id,
+                    $name,
+                    $db_email,
+                    $hashed_password
                 );
 
-                mysqli_stmt_fetch($stmt);
+                // Verifikasi password
+                if (
+                    mysqli_stmt_fetch($stmt) &&
+                    password_verify($password, $hashed_password)
+                ) {
+                    mysqli_stmt_close($stmt);
 
-                if (password_verify($password, $password_hash)) {
-                    if ($role !== 'customer') {
-                        $error = 'Gunakan halaman login admin untuk akun admin.';
-                    } else {
-                        session_regenerate_id(true);
+                    // Mencegah session fixation
+                    session_regenerate_id(true);
 
-                        $_SESSION['user_id'] = $user_id;
-                        $_SESSION['user_name'] = $user_name;
-                        $_SESSION['user_email'] = $user_email;
+                    $_SESSION['user_id'] = $id;
+                    $_SESSION['user_name'] = $name;
+                    $_SESSION['user_email'] = $db_email;
 
-                        mysqli_stmt_close($stmt);
+                    // Perbarui token setelah login
+                    $_SESSION['csrf_token'] =
+                        bin2hex(random_bytes(32));
 
-                        header('Location: index.php');
-                        exit;
-                    }
+                    header("Location: index.php");
+                    exit;
                 } else {
-                    $error = 'Email atau password salah.';
+                    $error = "Email atau password salah.";
+                    mysqli_stmt_close($stmt);
                 }
-            } else {
-                $error = 'Email atau password salah.';
             }
-
-            mysqli_stmt_close($stmt);
         }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SembakoKita</title>
+    <title>Login - Sembako-Kita</title>
+    <link rel="stylesheet" href="assets/css/style.css">
 
     <style>
         * {
@@ -93,162 +104,181 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            background: #f4fbfa;
-            color: #333;
+            background: #f3f8f7;
+            color: #263b3b;
         }
 
-        header {
-            background: #359FA0;
-            color: white;
-            padding: 20px 8%;
-            font-size: 24px;
-            font-weight: bold;
-        }
-
-        .container {
+        .login-container {
             width: 90%;
             max-width: 420px;
-            margin: 45px auto;
+            margin: 65px auto;
             padding: 30px;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border-radius: 14px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
         }
 
-        h2 {
+        .login-container h1 {
+            margin-bottom: 8px;
             text-align: center;
-            color: #359FA0;
-            margin-top: 0;
+            color: #359fa0;
         }
 
-        .deskripsi {
+        .login-container p {
             text-align: center;
-            color: #666;
-            margin-bottom: 24px;
+            color: #687878;
         }
 
-        label {
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
             display: block;
-            margin: 16px 0 7px;
+            margin-bottom: 7px;
             font-weight: bold;
         }
 
-        input {
+        .form-group input {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            border: 1px solid #ccd8d7;
+            border-radius: 7px;
             font-size: 15px;
         }
 
-        input:focus {
-            outline: 2px solid #8AD6D1;
-            border-color: #359FA0;
+        .form-group input:focus {
+            outline: 2px solid #8ad6d1;
+            border-color: #359fa0;
         }
 
-        button {
+        .btn-login {
             width: 100%;
-            margin-top: 24px;
             padding: 13px;
-            background: #359FA0;
-            color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 7px;
+            background: #359fa0;
+            color: white;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
         }
 
-        button:hover {
+        .btn-login:hover {
             background: #287f80;
         }
 
-        .pesan {
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 18px;
-        }
-
-        .sukses {
-            background: #e0f5ef;
-            color: #176b50;
-        }
-
         .error {
-            background: #ffe5e5;
-            color: #a32121;
+            padding: 12px;
+            margin-bottom: 16px;
+            background: #fff0f0;
+            color: #b42318;
+            border-radius: 7px;
+            font-size: 14px;
         }
 
-        .link {
-            text-align: center;
+        .success {
+            padding: 12px;
+            margin-bottom: 16px;
+            background: #eaf8ef;
+            color: #187443;
+            border-radius: 7px;
+            font-size: 14px;
+        }
+
+        .register-link {
             margin-top: 20px;
+            text-align: center;
         }
 
-        a {
-            color: #359FA0;
-            text-decoration: none;
+        .register-link a {
+            color: #287f80;
             font-weight: bold;
+            text-decoration: none;
         }
 
-        a:hover {
-            text-decoration: underline;
+        .back-link {
+            display: block;
+            margin-top: 18px;
+            text-align: center;
+            color: #687878;
+            text-decoration: none;
         }
     </style>
 </head>
-
 <body>
-    <header>SembakoKita</header>
 
-    <main class="container">
-        <h2>Login Akun</h2>
+    <div class="login-container">
+        <h1>Login</h1>
+        <p>Selamat datang kembali di Sembako-Kita!</p>
 
-        <p class="deskripsi">
-            Masuk untuk melanjutkan belanja.
-        </p>
-
-        <?php if ($pesan !== ''): ?>
-            <div class="pesan sukses">
-                <?= htmlspecialchars($pesan, ENT_QUOTES, 'UTF-8') ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($error !== ''): ?>
-            <div class="pesan error">
+        <?php if ($error !== ""): ?>
+            <div class="error">
                 <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="login.php">
-            <label for="email">Email</label>
+        <?php if (isset($_GET['registered'])): ?>
+            <div class="success">
+                Registrasi berhasil. Silakan login dengan akun kamu.
+            </div>
+        <?php endif; ?>
+
+        <form action="login.php" method="POST">
             <input
-                type="email"
-                id="email"
-                name="email"
-                value="<?= htmlspecialchars($email, ENT_QUOTES, 'UTF-8') ?>"
-                autocomplete="email"
-                required
+                type="hidden"
+                name="csrf_token"
+                value="<?= htmlspecialchars(
+                    $_SESSION['csrf_token'],
+                    ENT_QUOTES,
+                    'UTF-8'
+                ) ?>"
             >
 
-            <label for="password">Password</label>
-            <input
-                type="password"
-                id="password"
-                name="password"
-                autocomplete="current-password"
-                required
-            >
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value="<?= htmlspecialchars(
+                        $email,
+                        ENT_QUOTES,
+                        'UTF-8'
+                    ) ?>"
+                    placeholder="Masukkan email"
+                    maxlength="150"
+                    autocomplete="email"
+                    required
+                >
+            </div>
 
-            <button type="submit">Login</button>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Masukkan password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn-login">
+                Login
+            </button>
         </form>
 
-        <p class="link">
+        <div class="register-link">
             Belum punya akun?
-            <a href="register.php">Daftar di sini</a>
-        </p>
+            <a href="register.php">Daftar sekarang</a>
+        </div>
 
-        <p class="link">
-            <a href="index.php">Kembali ke Beranda</a>
-        </p>
-    </main>
+        <a href="index.php" class="back-link">
+            &larr; Kembali ke Beranda
+        </a>
+    </div>
+
 </body>
 </html>
