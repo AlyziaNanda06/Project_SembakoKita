@@ -1,4 +1,3 @@
-```php
 <?php
 session_start();
 require_once "../koneksi.php";
@@ -144,6 +143,8 @@ $sql = "
         grand_total,
         status,
         payment_status,
+        receiver_name,
+        receiver_phone,
         created_at
     FROM orders
 ";
@@ -298,7 +299,7 @@ $resultPesanan = mysqli_stmt_get_result($stmt);
 
         table {
             width: 100%;
-            min-width: 1200px;
+            min-width: 1300px;
             border-collapse: collapse;
         }
 
@@ -438,6 +439,7 @@ $resultPesanan = mysqli_stmt_get_result($stmt);
                     <tr>
                         <th>ID</th>
                         <th>Invoice</th>
+                        <th>Penerima</th>
                         <th>ID Pelanggan</th>
                         <th>Total Produk</th>
                         <th>Ongkir</th>
@@ -458,6 +460,12 @@ $resultPesanan = mysqli_stmt_get_result($stmt);
 
                             <td>
                                 <?= e($row["invoice_number"] ?: "ORD-" . $row["id"]) ?>
+                            </td>
+
+                            <td>
+                                <strong><?= e($row["receiver_name"] ?: "-") ?></strong>
+                                <br>
+                                <span class="muted"><?= e($row["receiver_phone"] ?: "-") ?></span>
                             </td>
 
                             <td>
@@ -557,7 +565,7 @@ $resultPesanan = mysqli_stmt_get_result($stmt);
 
                 <?php else: ?>
                     <tr>
-                        <td colspan="10" class="empty">
+                        <td colspan="11" class="empty">
                             Belum ada pesanan atau pesanan tidak ditemukan.
                         </td>
                     </tr>
@@ -576,4 +584,3 @@ $resultPesanan = mysqli_stmt_get_result($stmt);
 <?php
 mysqli_stmt_close($stmt);
 ?>
-```
