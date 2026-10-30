@@ -98,6 +98,7 @@ if (!$kategori) {
                     </article>
                 <?php endwhile; ?>
             </section>
+            
         <?php endif; ?>
     <?php endif; ?>
 </main>
@@ -107,3 +108,4 @@ if (!$kategori) {
 </footer>
 </body>
 </html>
+

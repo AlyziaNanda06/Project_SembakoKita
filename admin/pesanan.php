@@ -1,43 +1,172 @@
-
 <?php
 session_start();
-require_once __DIR__ . '/../koneksi.php';
+require_once "../koneksi.php";
 
-// Pastikan hanya admin yang sudah login dapat membuka halaman ini.
-if (!isset($_SESSION['admin_id'])) {
-    header('Location: ../login.php');
+// Cek login admin
+if (!isset($_SESSION["admin_id"])) {
+    header("Location: login.php");
     exit;
 }
 
-function e($nilai)
-{
-    return htmlspecialchars((string) $nilai, ENT_QUOTES, 'UTF-8');
+// Token keamanan form
+if (empty($_SESSION["admin_csrf_token"])) {
+    $_SESSION["admin_csrf_token"] = bin2hex(random_bytes(32));
 }
 
-function rupiah($nilai)
-{
-    return 'Rp ' . number_format((float) $nilai, 0, ',', '.');
+function e($value) {
+    return htmlspecialchars((string)($value ?? ""), ENT_QUOTES, "UTF-8");
 }
 
-// Ambil semua pesanan terbaru.
-$sql = "SELECT
-            id,
-            user_id,
-            invoice_number,
-            total_price,
-            shipping_cost,
-            grand_total,
-            status,
-            payment_status,
-            receiver_name,
-            receiver_phone,
-            created_at
-        FROM orders
-        ORDER BY created_at DESC";
+function rupiah($angka) {
+    return "Rp " . number_format((float)$angka, 0, ",", ".");
+}
 
-$result = $conn->query($sql);
+// Mengambil pilihan ENUM langsung dari database
+function ambilPilihanEnum($conn, $kolom) {
+    $kolomDiizinkan = ["status", "payment_status"];
 
-$jumlahPesanan = $result->num_rows;
+    if (!in_array($kolom, $kolomDiizinkan, true)) {
+        return [];
+    }
+
+    $result = mysqli_query($conn, "SHOW COLUMNS FROM orders LIKE '$kolom'");
+
+    if (!$result || mysqli_num_rows($result) === 0) {
+        return [];
+    }
+
+    $data = mysqli_fetch_assoc($result);
+    $tipe = $data["Type"] ?? "";
+
+    if (preg_match("/^enum\((.*)\)$/i", $tipe, $matches)) {
+        return str_getcsv($matches[1], ",", "'");
+    }
+
+    return [];
+}
+
+$statusPilihan = ambilPilihanEnum($conn, "status");
+$pembayaranPilihan = ambilPilihanEnum($conn, "payment_status");
+
+$pesan = "";
+$error = "";
+
+// Proses perubahan status
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $token = $_POST["csrf_token"] ?? "";
+
+    if (!hash_equals($_SESSION["admin_csrf_token"], $token)) {
+        $error = "Permintaan tidak valid. Silakan muat ulang halaman.";
+    } else {
+        $id = filter_input(INPUT_POST, "id", FILTER_VALIDATE_INT);
+        $jenis = $_POST["jenis"] ?? "";
+        $nilai = $_POST["nilai"] ?? "";
+
+        if (!$id || $id < 1) {
+            $error = "ID pesanan tidak valid.";
+        } elseif ($jenis === "status" && in_array($nilai, $statusPilihan, true)) {
+            $stmt = mysqli_prepare(
+                $conn,
+                "UPDATE orders SET status = ? WHERE id = ?"
+            );
+
+            mysqli_stmt_bind_param($stmt, "si", $nilai, $id);
+
+            if (mysqli_stmt_execute($stmt)) {
+                $pesan = "Status pesanan berhasil diperbarui.";
+            } else {
+                $error = "Gagal memperbarui status pesanan.";
+            }
+
+            mysqli_stmt_close($stmt);
+        } elseif (
+            $jenis === "payment_status" &&
+            in_array($nilai, $pembayaranPilihan, true)
+        ) {
+            $stmt = mysqli_prepare(
+                $conn,
+                "UPDATE orders SET payment_status = ? WHERE id = ?"
+            );
+
+            mysqli_stmt_bind_param($stmt, "si", $nilai, $id);
+
+            if (mysqli_stmt_execute($stmt)) {
+                $pesan = "Status pembayaran berhasil diperbarui.";
+            } else {
+                $error = "Gagal memperbarui status pembayaran.";
+            }
+
+            mysqli_stmt_close($stmt);
+        } else {
+            $error = "Data status yang dipilih tidak valid.";
+        }
+    }
+}
+
+// Pencarian pesanan
+$cari = trim($_GET["cari"] ?? "");
+
+// Statistik pesanan
+$statistik = [
+    "total" => 0,
+    "pending" => 0,
+    "diproses" => 0,
+    "selesai" => 0
+];
+
+$sqlStatistik = "
+    SELECT
+        COUNT(*) AS total,
+        SUM(status = 'pending') AS pending,
+        SUM(status = 'diproses') AS diproses,
+        SUM(status = 'selesai') AS selesai
+    FROM orders
+";
+
+$resultStatistik = mysqli_query($conn, $sqlStatistik);
+
+if ($resultStatistik) {
+    $statistik = array_merge(
+        $statistik,
+        mysqli_fetch_assoc($resultStatistik) ?: []
+    );
+}
+
+// Ambil data pesanan
+$sql = "
+    SELECT
+        id,
+        user_id,
+        invoice_number,
+        total_price,
+        shipping_cost,
+        grand_total,
+        status,
+        payment_status,
+        receiver_name,
+        receiver_phone,
+        created_at
+    FROM orders
+";
+
+if ($cari !== "") {
+    $sql .= "
+        WHERE invoice_number LIKE ?
+        OR CAST(id AS CHAR) LIKE ?
+    ";
+}
+
+$sql .= " ORDER BY created_at DESC, id DESC";
+
+$stmt = mysqli_prepare($conn, $sql);
+
+if ($cari !== "") {
+    $kataCari = "%" . $cari . "%";
+    mysqli_stmt_bind_param($stmt, "ss", $kataCari, $kataCari);
+}
+
+mysqli_stmt_execute($stmt);
+$resultPesanan = mysqli_stmt_get_result($stmt);
 ?>
 
 <!DOCTYPE html>
@@ -45,6 +174,7 @@ $jumlahPesanan = $result->num_rows;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Kelola Pesanan - Sembako-Kita</title>
 
     <style>
@@ -54,195 +184,403 @@ $jumlahPesanan = $result->num_rows;
 
         body {
             margin: 0;
-            padding: 24px;
             font-family: Arial, sans-serif;
-            background: #f5f7f7;
-            color: #333;
+            background: #f4f7f7;
+            color: #263b3b;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: auto;
+        header {
+            background: #359fa0;
+            color: white;
+            padding: 20px 5%;
         }
 
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-            margin-bottom: 24px;
+        header a {
+            color: white;
+            text-decoration: none;
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
         }
 
         h1 {
-            margin: 0 0 8px;
-            color: #247f80;
+            margin-top: 0;
         }
 
         .muted {
-            color: #666;
-            font-size: 14px;
+            color: #718181;
         }
 
-        .button {
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 15px;
+            margin: 25px 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px #00000008;
+        }
+
+        .stat-card p {
+            margin: 0 0 10px;
+            color: #718181;
+        }
+
+        .stat-card strong {
+            font-size: 26px;
+        }
+
+        .card {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px #00000008;
+            margin-bottom: 20px;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            padding: 11px 12px;
+            border: 1px solid #d5dddd;
+            border-radius: 7px;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        button, .btn {
             display: inline-block;
-            padding: 10px 14px;
-            border-radius: 6px;
+            border: none;
+            padding: 10px 13px;
+            border-radius: 7px;
             background: #359fa0;
             color: white;
             text-decoration: none;
-            border: none;
             cursor: pointer;
+            font-size: 13px;
         }
 
-        .summary {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px #0000000d;
+        .btn-detail {
+            background: #287c7d;
+            white-space: nowrap;
         }
 
-        .table-wrapper {
+        .btn-secondary {
+            background: #718181;
+        }
+
+        .alert {
+            padding: 13px 16px;
+            border-radius: 8px;
+            margin-bottom: 18px;
+            background: #e1f5e8;
+            color: #24653b;
+        }
+
+        .alert-error {
+            background: #fde8e7;
+            color: #9b2929;
+        }
+
+        .table-wrap {
             overflow-x: auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px #0000000d;
         }
 
         table {
             width: 100%;
+            min-width: 1300px;
             border-collapse: collapse;
-            min-width: 950px;
         }
 
         th, td {
-            padding: 13px 12px;
             text-align: left;
-            border-bottom: 1px solid #eee;
+            padding: 13px 10px;
+            border-bottom: 1px solid #edf0f0;
             vertical-align: top;
         }
 
         th {
-            background: #e8f6f4;
-            color: #246f70;
-        }
-
-        .status {
-            display: inline-block;
-            padding: 5px 9px;
-            border-radius: 20px;
-            background: #fff0c5;
-            font-size: 12px;
+            background: #f8fbfb;
             white-space: nowrap;
         }
 
-        .empty {
-            padding: 30px;
-            text-align: center;
-            color: #666;
+        select {
+            width: 145px;
+            padding: 8px;
+            margin-bottom: 7px;
+            border: 1px solid #d5dddd;
+            border-radius: 6px;
+            background: white;
         }
 
-        @media (max-width: 600px) {
-            body {
-                padding: 12px;
+        .status-form {
+            margin: 0 0 10px;
+        }
+
+        .status-form button {
+            display: block;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 25px;
+            color: #718181;
+        }
+
+        @media (max-width: 800px) {
+            .stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            main {
+                padding: 0 12px;
+            }
+
+            .card {
+                padding: 15px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .stats {
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+
+            .stat-card {
+                padding: 13px;
+            }
+
+            .stat-card strong {
+                font-size: 21px;
             }
         }
     </style>
 </head>
 
 <body>
-<div class="container">
 
-    <div class="header">
-        <div>
-            <h1>Kelola Pesanan</h1>
-            <div class="muted">
-                Daftar pesanan pelanggan Sembako-Kita
-            </div>
+<header>
+    <strong>Admin Sembako-Kita</strong>
+
+    <span style="float: right;">
+        <a href="dashboard.php">Kembali ke Dashboard</a>
+    </span>
+</header>
+
+<main>
+    <h1>Kelola Pesanan</h1>
+    <p class="muted">Lihat rincian transaksi dan kelola status pesanan pelanggan.</p>
+
+    <?php if ($pesan !== ""): ?>
+        <div class="alert"><?= e($pesan) ?></div>
+    <?php endif; ?>
+
+    <?php if ($error !== ""): ?>
+        <div class="alert alert-error"><?= e($error) ?></div>
+    <?php endif; ?>
+
+    <section class="stats">
+        <div class="stat-card">
+            <p>Total Pesanan</p>
+            <strong><?= (int)$statistik["total"] ?></strong>
         </div>
 
-        <a class="button" href="dashboard.php">
-            Kembali ke Dashboard
-        </a>
-    </div>
+        <div class="stat-card">
+            <p>Menunggu</p>
+            <strong><?= (int)$statistik["pending"] ?></strong>
+        </div>
 
-    <div class="summary">
-        <strong>Total Pesanan:</strong>
-        <?= $jumlahPesanan ?> pesanan
-    </div>
+        <div class="stat-card">
+            <p>Diproses</p>
+            <strong><?= (int)$statistik["diproses"] ?></strong>
+        </div>
 
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>No.</th>
-                    <th>Invoice</th>
-                    <th>Penerima</th>
-                    <th>Tanggal</th>
-                    <th>Total</th>
-                    <th>Status Pesanan</th>
-                    <th>Status Pembayaran</th>
-                </tr>
-            </thead>
+        <div class="stat-card">
+            <p>Selesai</p>
+            <strong><?= (int)$statistik["selesai"] ?></strong>
+        </div>
+    </section>
 
-            <tbody>
-            <?php if ($jumlahPesanan > 0): ?>
-                <?php $no = 1; ?>
+    <section class="card">
+        <h2>Cari Pesanan</h2>
 
-                <?php while ($pesanan = $result->fetch_assoc()): ?>
+        <form method="GET" class="search-form">
+            <input
+                type="text"
+                name="cari"
+                placeholder="Masukkan nomor invoice atau ID pesanan"
+                value="<?= e($cari) ?>"
+            >
+
+            <button type="submit">Cari</button>
+
+            <a href="pesanan.php" class="btn btn-secondary">Reset</a>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Daftar Pesanan</h2>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
                     <tr>
-                        <td><?= $no++ ?></td>
+                        <th>ID</th>
+                        <th>Invoice</th>
+                        <th>Penerima</th>
+                        <th>ID Pelanggan</th>
+                        <th>Total Produk</th>
+                        <th>Ongkir</th>
+                        <th>Total Bayar</th>
+                        <th>Tanggal</th>
+                        <th>Status Pesanan</th>
+                        <th>Status Pembayaran</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
 
-                        <td>
-                            <?= e($pesanan['invoice_number']) ?>
-                        </td>
+                <tbody>
+                <?php if (mysqli_num_rows($resultPesanan) > 0): ?>
 
-                        <td>
-                            <strong>
-                                <?= e($pesanan['receiver_name'] ?? '-') ?>
-                            </strong>
-                            <br>
-                            <span class="muted">
-                                <?= e($pesanan['receiver_phone'] ?? '-') ?>
-                            </span>
-                        </td>
+                    <?php while ($row = mysqli_fetch_assoc($resultPesanan)): ?>
+                        <tr>
+                            <td><?= (int)$row["id"] ?></td>
 
-                        <td>
-                            <?= e($pesanan['created_at']) ?>
-                        </td>
+                            <td>
+                                <?= e($row["invoice_number"] ?: "ORD-" . $row["id"]) ?>
+                            </td>
 
-                        <td>
-                            <strong>
-                                <?= rupiah($pesanan['grand_total']) ?>
-                            </strong>
-                        </td>
+                            <td>
+                                <strong><?= e($row["receiver_name"] ?: "-") ?></strong>
+                                <br>
+                                <span class="muted"><?= e($row["receiver_phone"] ?: "-") ?></span>
+                            </td>
 
-                        <td>
-                            <span class="status">
-                                <?= e($pesanan['status']) ?>
-                            </span>
-                        </td>
+                            <td>
+                                <?= $row["user_id"] !== null
+                                    ? (int)$row["user_id"]
+                                    : "-" ?>
+                            </td>
 
-                        <td>
-                            <span class="status">
-                                <?= e($pesanan['payment_status']) ?>
-                            </span>
+                            <td><?= rupiah($row["total_price"]) ?></td>
+
+                            <td><?= rupiah($row["shipping_cost"]) ?></td>
+
+                            <td><strong><?= rupiah($row["grand_total"]) ?></strong></td>
+
+                            <td><?= e($row["created_at"]) ?></td>
+
+                            <td>
+                                <form method="POST" class="status-form">
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="<?= e($_SESSION["admin_csrf_token"]) ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value="<?= (int)$row["id"] ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="jenis"
+                                        value="status"
+                                    >
+
+                                    <select name="nilai" aria-label="Status pesanan">
+                                        <?php foreach ($statusPilihan as $pilihan): ?>
+                                            <option
+                                                value="<?= e($pilihan) ?>"
+                                                <?= $row["status"] === $pilihan ? "selected" : "" ?>
+                                            >
+                                                <?= e(ucfirst(str_replace("_", " ", $pilihan))) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+
+                                    <button type="submit">Simpan</button>
+                                </form>
+                            </td>
+
+                            <td>
+                                <form method="POST" class="status-form">
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="<?= e($_SESSION["admin_csrf_token"]) ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="id"
+                                        value="<?= (int)$row["id"] ?>"
+                                    >
+
+                                    <input
+                                        type="hidden"
+                                        name="jenis"
+                                        value="payment_status"
+                                    >
+
+                                    <select name="nilai" aria-label="Status pembayaran">
+                                        <?php foreach ($pembayaranPilihan as $pilihan): ?>
+                                            <option
+                                                value="<?= e($pilihan) ?>"
+                                                <?= $row["payment_status"] === $pilihan ? "selected" : "" ?>
+                                            >
+                                                <?= e(ucfirst(str_replace("_", " ", $pilihan))) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+
+                                    <button type="submit">Simpan</button>
+                                </form>
+                            </td>
+
+                            <td>
+                                <a
+                                    class="btn btn-detail"
+                                    href="detail-pesanan.php?id=<?= (int)$row["id"] ?>"
+                                >
+                                    Detail
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+
+                <?php else: ?>
+                    <tr>
+                        <td colspan="11" class="empty">
+                            Belum ada pesanan atau pesanan tidak ditemukan.
                         </td>
                     </tr>
-                <?php endwhile; ?>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
-            <?php else: ?>
-                <tr>
-                    <td colspan="7" class="empty">
-                        Belum ada pesanan.
-                    </td>
-                </tr>
-            <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <a href="dashboard.php" class="btn btn-secondary">← Kembali ke Dashboard</a>
+</main>
 
-</div>
 </body>
 </html>
+
+<?php
+mysqli_stmt_close($stmt);
+?>
