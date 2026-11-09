@@ -4,8 +4,12 @@ session_start();
 require_once __DIR__ . '/../koneksi.php';
 
 if (!isset($_SESSION['admin_id'])) {
-    header("Location: ../login.php");
+    header("Location: login.php");
     exit;
+}
+
+if (empty($_SESSION['admin_csrf_token'])) {
+    $_SESSION['admin_csrf_token'] = bin2hex(random_bytes(32));
 }
 
 function e($value) {
@@ -197,7 +201,10 @@ unset($_SESSION['pesan_error']);
     <?php endif; ?>
 
     <form action="../proses/edit-produk.php" method="POST">
-        <input type="hidden" name="id" value="<?= (int)$produk['id'] ?>">
+    <input type="hidden" name="id" value="<?= (int)$produk['id'] ?>">
+
+    <input type="hidden" name="csrf_token"
+           value="<?= e($_SESSION['admin_csrf_token']) ?>">
 
         <div class="grid">
             <div class="field full">

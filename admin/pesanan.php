@@ -135,28 +135,40 @@ if ($resultStatistik) {
 // Ambil data pesanan
 $sql = "
     SELECT
-        id,
-        user_id,
-        invoice_number,
-        total_price,
-        shipping_cost,
-        grand_total,
-        status,
-        payment_status,
-        receiver_name,
-        receiver_phone,
-        created_at
-    FROM orders
+        o.id,
+        o.user_id,
+        o.invoice_number,
+        o.total_price,
+        o.shipping_cost,
+        o.grand_total,
+        o.status,
+        o.payment_status,
+        (
+            SELECT a.receiver
+            FROM addresses a
+            WHERE a.user_id = o.user_id
+            ORDER BY a.is_default DESC, a.id DESC
+            LIMIT 1
+        ) AS receiver_name,
+        (
+            SELECT a.phone
+            FROM addresses a
+            WHERE a.user_id = o.user_id
+            ORDER BY a.is_default DESC, a.id DESC
+            LIMIT 1
+        ) AS receiver_phone,
+        o.created_at
+    FROM orders o
 ";
 
 if ($cari !== "") {
     $sql .= "
-        WHERE invoice_number LIKE ?
-        OR CAST(id AS CHAR) LIKE ?
+        WHERE o.invoice_number LIKE ?
+        OR CAST(o.id AS CHAR) LIKE ?
     ";
 }
 
-$sql .= " ORDER BY created_at DESC, id DESC";
+$sql .= " ORDER BY o.created_at DESC, o.id DESC";
 
 $stmt = mysqli_prepare($conn, $sql);
 
