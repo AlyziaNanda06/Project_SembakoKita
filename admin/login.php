@@ -11,29 +11,34 @@ if (isset($_SESSION['admin_id'])) {
 $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $username = trim($_POST["username"] ?? "");
+    $email = trim($_POST["email"] ?? "");
     $password = $_POST["password"] ?? "";
 
-    if ($username === "" || $password === "") {
-        $error = "Username dan password wajib diisi.";
+    if ($email === "" || $password === "") {
+        $error = "Email dan password wajib diisi.";
     } else {
         $stmt = mysqli_prepare(
             $conn,
-            "SELECT id, username, password FROM admins WHERE username = ? LIMIT 1"
+            "SELECT id, name, email, password
+             FROM users
+             WHERE email = ? AND role = 'admin'
+             LIMIT 1"
         );
 
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "s", $username);
+            mysqli_stmt_bind_param($stmt, "s", $email);
             mysqli_stmt_execute($stmt);
+
             $result = mysqli_stmt_get_result($stmt);
             $admin = mysqli_fetch_assoc($result);
+
             mysqli_stmt_close($stmt);
 
             if ($admin && password_verify($password, $admin["password"])) {
                 session_regenerate_id(true);
 
                 $_SESSION["admin_id"] = $admin["id"];
-                $_SESSION["admin_username"] = $admin["username"];
+                $_SESSION["admin_username"] = $admin["name"];
                 $_SESSION["admin_csrf_token"] = bin2hex(random_bytes(32));
 
                 header("Location: dashboard.php");
@@ -41,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        $error = "Username atau password salah.";
+        $error = "Email atau password salah.";
     }
 }
 ?>
@@ -166,12 +171,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <?php endif; ?>
 
         <form method="POST" action="">
-            <label for="username">Username Admin</label>
+            <label for="username">Email Admin</label>
             <input
-                type="text"
-                id="username"
-                name="username"
-                autocomplete="username"
+                type="email"
+                id="email"
+                name="email"
+                autocomplete="email"
                 required
             >
 

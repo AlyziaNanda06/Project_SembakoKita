@@ -3,7 +3,7 @@
 $host = "localhost";
 $username = "root";
 $password = "";
-$database = "db_sembako_kita";
+$database = "db_sembako_store";
 
 // Menghubungkan PHP dengan MySQL
 $conn = mysqli_connect(
