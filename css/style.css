@@ -1685,3 +1685,47 @@ button, input, select {
         flex-basis: 100%;
     }
 }
+
+/* Sapaan pengguna */
+.user-greeting {
+    color: #359FA0;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Form logout */
+.logout-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+/* Tombol logout */
+.logout-link {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    background-color: #FF8C52;
+    color: #ffffff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.logout-link:hover {
+    opacity: 0.85;
+}
+
+/* Tombol daftar */
+.register-link {
+    display: inline-block;
+    padding: 9px 16px;
+    border-radius: 8px;
+    background-color: #359FA0;
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.register-link:hover {
+    opacity: 0.85;
+}
