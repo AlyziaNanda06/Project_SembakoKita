@@ -38,8 +38,8 @@ SembakoKita merupakan aplikasi e-commerce berbasis web yang menyediakan layanan 
 6. Buka aplikasi melalui browser.
 
 ## Anggota Kelompok
-| 1 | Alyzia Nanda Mutia Diohari | 2522105059 |
-| 2 | Aprilia Dwi Hapsari | 2522105042 |
-| 3 | Ririn Nuraeni | 2522105069 |
-| 4 | Indi Salsabila Zaqia Putri | 2522105043 |
-| 5 | Helga Meilani | 2522105052 |
+Alyzia Nanda Mutia Diohari (2522105059)
+Aprilia Dwi Hapsari (2522105042)
+Ririn Nuraeni (2522105069)
+Indi Salsabila Zaqia Putri (2522105043)
+Helga Meilani (2522105052)
