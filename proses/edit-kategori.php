@@ -34,6 +34,9 @@ if ($id <= 0 || $nama === "" || mb_strlen($nama) > 100) {
 $slug = strtolower($nama);
 $slug = preg_replace('/[^a-z0-9]+/', '-', $slug);
 $slug = trim($slug, '-');
+if ($slug === "") {
+    die("Nama kategori harus mengandung huruf atau angka.");
+}
 
 $stmt = mysqli_prepare(
     $conn,

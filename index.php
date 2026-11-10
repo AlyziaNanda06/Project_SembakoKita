@@ -77,16 +77,19 @@ function e($teks) {
         <button type="submit">Cari</button>
     </form>
 
-    <nav class="nav-menu">
-        <a href="index.php">Beranda</a>
-        <a href="produk.php">Produk</a>
-        <a href="keranjang.php">Keranjang</a>
+    
+<nav class="nav-menu">
+    <a href="index.php">Beranda</a>
+    <a href="produk.php">Produk</a>
+    <a href="keranjang.php">Keranjang</a>
 
-        <?php if (isset($_SESSION['user_id'])): ?>
+    <?php if (isset($_SESSION['user_id'])): ?>
 
-            <span class="user-greeting">
-                Halo, <?= e($_SESSION['user_name'] ?? 'Pengguna') ?>
-            </span>
+        <a href="riwayat-pesanan.php">Riwayat Pesanan</a>
+
+        <span class="user-greeting">
+            Halo, <?= e($_SESSION['user_name'] ?? 'Pengguna') ?>
+        </span>
 
             <form action="logout.php" method="POST" class="logout-form">
                 <input
@@ -336,6 +339,7 @@ function e($teks) {
             <a href="index.php">Beranda</a>
             <a href="produk.php">Produk</a>
             <a href="login.php">Masuk</a>
+            <a href="riwayat-pesanan.php">Riwayat Pesanan</a>
         </div>
 
         <div>

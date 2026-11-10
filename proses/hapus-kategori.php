@@ -1,7 +1,7 @@
 
 <?php
 session_start();
-require_once "../koneksi.php";
+require_once __DIR__ . "/../koneksi.php";
 
 if (!isset($_SESSION["admin_id"])) {
     header("Location: ../admin/login.php");
@@ -13,6 +13,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     exit;
 }
 
+// Validasi CSRF
 $token = $_POST["csrf_token"] ?? "";
 
 if (
@@ -22,45 +23,79 @@ if (
     die("Permintaan tidak valid. Silakan kembali dan coba lagi.");
 }
 
-$id = (int) ($_POST["id"] ?? 0);
+// Validasi ID
+$id = filter_input(INPUT_POST, "id", FILTER_VALIDATE_INT);
 
-if ($id <= 0) {
+if (!$id || $id < 1) {
     header("Location: ../admin/kategori.php?hapus_gagal=1");
     exit;
 }
 
-// Periksa apakah kategori masih memiliki produk
-$stmt = mysqli_prepare(
-    $conn,
-    "SELECT COUNT(*) AS jumlah FROM products WHERE category_id = ?"
-);
+try {
+    mysqli_begin_transaction($conn);
 
-mysqli_stmt_bind_param($stmt, "i", $id);
-mysqli_stmt_execute($stmt);
+    // Kunci kategori selama proses penghapusan
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT id FROM categories WHERE id = ? FOR UPDATE"
+    );
 
-$result = mysqli_stmt_get_result($stmt);
-$data = mysqli_fetch_assoc($result);
-mysqli_stmt_close($stmt);
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
 
-if ((int) $data["jumlah"] > 0) {
-    header("Location: ../admin/kategori.php?kategori_dipakai=1");
-    exit;
-}
-
-// Hapus kategori jika tidak memiliki produk
-$stmt = mysqli_prepare(
-    $conn,
-    "DELETE FROM categories WHERE id = ?"
-);
-
-mysqli_stmt_bind_param($stmt, "i", $id);
-
-if (mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) > 0) {
+    $result = mysqli_stmt_get_result($stmt);
+    $kategori = mysqli_fetch_assoc($result);
     mysqli_stmt_close($stmt);
+
+    if (!$kategori) {
+        throw new Exception("Kategori tidak ditemukan.");
+    }
+
+    // Periksa apakah kategori masih memiliki produk
+    $stmt = mysqli_prepare(
+        $conn,
+        "SELECT COUNT(*) AS jumlah
+         FROM products
+         WHERE category_id = ?"
+    );
+
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
+
+    $result = mysqli_stmt_get_result($stmt);
+    $data = mysqli_fetch_assoc($result);
+    mysqli_stmt_close($stmt);
+
+    if ((int) $data["jumlah"] > 0) {
+        mysqli_rollback($conn);
+        header("Location: ../admin/kategori.php?kategori_dipakai=1");
+        exit;
+    }
+
+    // Hapus kategori
+    $stmt = mysqli_prepare(
+        $conn,
+        "DELETE FROM categories WHERE id = ?"
+    );
+
+    mysqli_stmt_bind_param($stmt, "i", $id);
+    mysqli_stmt_execute($stmt);
+
+    if (mysqli_stmt_affected_rows($stmt) < 1) {
+        mysqli_stmt_close($stmt);
+        throw new Exception("Kategori gagal dihapus.");
+    }
+
+    mysqli_stmt_close($stmt);
+    mysqli_commit($conn);
+
     header("Location: ../admin/kategori.php?hapus_berhasil=1");
     exit;
-}
 
-mysqli_stmt_close($stmt);
-header("Location: ../admin/kategori.php?hapus_gagal=1");
-exit;
+} catch (Throwable $e) {
+    mysqli_rollback($conn);
+    error_log("Hapus kategori: " . $e->getMessage());
+
+    header("Location: ../admin/kategori.php?hapus_gagal=1");
+    exit;
+}

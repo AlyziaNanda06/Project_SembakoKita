@@ -432,9 +432,17 @@ foreach ($_SESSION['keranjang'] as $key => $item) {
             Total Belanja: <?= rupiah($total) ?>
         </h2>
 
-        <a href="produk.php" class="cart-link">
-            Lanjut Belanja
-        </a>
+        <div class="cart-footer-actions">
+
+    <a href="produk.php" class="cart-link">
+        Lanjut Belanja
+    </a>
+
+    <a href="checkout.php" class="cart-link checkout-button">
+        Lanjut ke Checkout →
+    </a>
+
+</div>
 
     <?php endif; ?>
 
