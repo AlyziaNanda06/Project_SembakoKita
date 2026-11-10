@@ -51,11 +51,12 @@ try {
 
     // Cek apakah produk masih digunakan tabel lain
     $tabelRelasi = [
-        'order_items',
-        'cart_items',
-        'reviews',
-        'wishlists'
-    ];
+    'order_items',
+    'cart_items',
+    'reviews',
+    'wishlists',
+    'product_variants'
+];
 
     foreach ($tabelRelasi as $tabel) {
         $sql = "SELECT COUNT(*) AS jumlah FROM `$tabel` WHERE product_id = ?";
