@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 16, 2026 at 12:58 PM
+-- Generation Time: Nov 10, 2026 at 07:14 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -135,10 +135,22 @@ INSERT INTO `categories` (`id`, `name`, `slug`, `image`, `description`, `status`
 (1, 'Bahan Pokok Utama', 'bahan-pokok', NULL, 'Produk kebutuhan pokok sehari-hari', 1, '2026-10-13 09:27:13', '2026-10-13 09:27:13'),
 (2, 'Bumbu Dapur', 'bumbu-dapur', NULL, 'Bumbu dan bahan memasak', 1, '2026-10-13 09:27:13', '2026-10-13 09:27:13'),
 (3, 'Makanan Instan', 'makanan-instan', NULL, 'Produk makanan cepat saji', 1, '2026-10-13 09:27:13', '2026-10-13 09:27:13'),
-(4, 'Minuman', 'minuman', NULL, 'Minuman dan bahan minuman', 1, '2026-10-13 09:27:13', '2026-10-13 09:27:13'),
+(4, 'Minuman', 'minuman', NULL, 'Minuman dan bahan minuman', 1, '2026-10-13 09:27:13', '2026-11-09 13:20:39'),
 (5, 'Jajanan & Snack', 'snack', NULL, 'Makanan ringan', 1, '2026-10-13 09:27:13', '2026-10-13 09:27:13'),
 (6, 'Rumah Tangga', 'rumah-tangga', NULL, 'Kebutuhan kebersihan rumah', 1, '2026-10-13 09:27:13', '2026-10-13 09:27:13'),
-(7, 'Perlengkapan Bayi', 'perlengkapan-bayi', NULL, 'Produk bayi dan wanita', 1, '2026-10-13 09:27:13', '2026-10-13 09:27:13');
+(7, 'Perlengkapan Bayi', 'perlengkapan-bayi', NULL, 'Produk bayi dan wanita', 1, '2026-10-13 09:27:13', '2026-11-09 14:42:24');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `migrations`
+--
+
+CREATE TABLE `migrations` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `migration` varchar(255) NOT NULL,
+  `batch` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -149,6 +161,9 @@ INSERT INTO `categories` (`id`, `name`, `slug`, `image`, `description`, `status`
 CREATE TABLE `orders` (
   `id` bigint(20) NOT NULL,
   `user_id` bigint(20) DEFAULT NULL,
+  `receiver_name` varchar(100) DEFAULT NULL,
+  `receiver_phone` varchar(20) DEFAULT NULL,
+  `shipping_address` text DEFAULT NULL,
   `invoice_number` varchar(50) DEFAULT NULL,
   `total_price` decimal(12,2) DEFAULT NULL,
   `shipping_cost` decimal(12,2) DEFAULT NULL,
@@ -238,7 +253,7 @@ INSERT INTO `products` (`id`, `category_id`, `brand_id`, `name`, `slug`, `sku`, 
 (17, 5, 1, 'Kerupuk Udang', NULL, 'KR001', 12000.00, NULL, 500, 100, 'Kerupuk siap makan', 'Packing plastik', 'Retur jika rusak', 'active', '2026-10-13 09:52:18', '2026-10-13 09:52:18'),
 (18, 6, 9, 'Rinso Deterjen Bubuk 800gr', NULL, 'RN001', 15000.00, NULL, 800, 200, 'Deterjen pencuci pakaian', 'Packing aman', 'Retur produk cacat', 'active', '2026-10-13 09:52:52', '2026-10-13 09:52:52'),
 (19, 6, 11, 'Pepsodent Pasta Gigi', NULL, 'PD001', 10000.00, NULL, 150, 150, 'Pasta gigi perlindungan gigi', 'Packing standar', 'Retur jika rusak', 'active', '2026-10-13 09:52:52', '2026-10-13 09:52:52'),
-(20, 7, 10, 'MamyPoko Popok Bayi S', NULL, 'MP001', 45000.00, NULL, 1000, 100, 'Popok bayi nyaman', 'Packing tertutup', 'Tidak menerima retur jika kemasan terbuka', 'active', '2026-10-13 09:54:11', '2026-10-13 09:54:11');
+(20, 7, 10, 'MamyPoko Popok Bayi S test', 'mamypoko-popok-bayi-s-test-20', 'MP001', 45000.00, NULL, 1000, 100, 'Popok bayi nyaman', 'Packing tertutup', 'Tidak menerima retur jika kemasan terbuka', 'active', '2026-10-13 09:54:11', '2026-11-09 14:25:52');
 
 -- --------------------------------------------------------
 
@@ -360,6 +375,14 @@ CREATE TABLE `users` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`id`, `name`, `email`, `password`, `phone`, `address`, `city`, `province`, `postal_code`, `photo`, `role`, `created_at`, `updated_at`) VALUES
+(1, 'ALYZIA NANDA MUTIA DIOHARI', 'alyziananda06@gmail.com', '$2y$10$NR9rPUdPtdB8nnJbn60jH.2cdJjlHe5xno8gXDbDhnzPEPgQX8vR.', NULL, NULL, NULL, NULL, NULL, NULL, 'customer', '2026-10-19 09:01:03', '2026-10-19 09:01:03'),
+(2, 'alyzia nanda', 'akuncadangancya@gmail.com', '$2y$10$PAPUGaSzDW9FT0rAkybusuBYVehzOH2tIHlVu2KT/l6d7o0FUPYQS', NULL, NULL, NULL, NULL, NULL, NULL, 'admin', '2026-11-09 12:51:17', '2026-11-09 13:03:57');
+
 -- --------------------------------------------------------
 
 --
@@ -400,20 +423,26 @@ ALTER TABLE `brands`
 --
 ALTER TABLE `carts`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `fk_carts_user` (`user_id`);
 
 --
 -- Indexes for table `cart_items`
 --
 ALTER TABLE `cart_items`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `cart_id` (`cart_id`),
-  ADD KEY `product_id` (`product_id`);
+  ADD KEY `fk_cart_items_cart` (`cart_id`),
+  ADD KEY `fk_cart_items_product` (`product_id`);
 
 --
 -- Indexes for table `categories`
 --
 ALTER TABLE `categories`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `migrations`
+--
+ALTER TABLE `migrations`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -545,6 +574,12 @@ ALTER TABLE `categories`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
+-- AUTO_INCREMENT for table `migrations`
+--
+ALTER TABLE `migrations`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
@@ -566,7 +601,7 @@ ALTER TABLE `payments`
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `product_images`
@@ -602,13 +637,13 @@ ALTER TABLE `shipping`
 -- AUTO_INCREMENT for table `stock_histories`
 --
 ALTER TABLE `stock_histories`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `wishlists`
@@ -630,14 +665,17 @@ ALTER TABLE `addresses`
 -- Constraints for table `carts`
 --
 ALTER TABLE `carts`
-  ADD CONSTRAINT `carts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `carts_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_carts_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `cart_items`
 --
 ALTER TABLE `cart_items`
   ADD CONSTRAINT `cart_items_ibfk_1` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `cart_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `cart_items_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cart_items_cart` FOREIGN KEY (`cart_id`) REFERENCES `carts` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cart_items_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `orders`
